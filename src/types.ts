@@ -68,9 +68,36 @@ export interface SimplifiedConcept {
   };
 }
 
+export interface ResourceRecommendation {
+  title: string;
+  type: 'video' | 'article' | 'book' | 'interactive' | 'course';
+  description: string;
+  searchQueryOrUrl: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+}
+
+export interface RoadmapMilestone {
+  stage: 'Beginner' | 'Intermediate' | 'Advanced';
+  milestoneTitle: string;
+  estimatedDuration: string;
+  coreConcepts: string[];
+  actionableTasks: string[];
+  learningObjectives: string[];
+}
+
+export interface LearningPathData {
+  topic: string;
+  targetLevel: string;
+  learnerProfile: string;
+  overview: string;
+  prerequisites: string[];
+  milestones: RoadmapMilestone[];
+  recommendedResources: ResourceRecommendation[];
+}
+
 export interface SavedItem {
   id: string;
-  type: 'note' | 'qa' | 'summary' | 'concept' | 'quiz_score';
+  type: 'note' | 'qa' | 'summary' | 'concept' | 'quiz_score' | 'learning_path';
   title: string;
   content: string;
   subject: Subject;
@@ -78,3 +105,4 @@ export interface SavedItem {
   date: string;
   metadata?: any;
 }
+

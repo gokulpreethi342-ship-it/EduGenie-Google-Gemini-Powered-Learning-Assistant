@@ -25,9 +25,11 @@ interface QuizArenaProps {
 }
 
 export const QuizArena: React.FC<QuizArenaProps> = ({ gradeLevel, subject, onSavedChange }) => {
+  const [sourceMode, setSourceMode] = useState<'topic' | 'passage'>('topic');
   const [topic, setTopic] = useState('');
+  const [passage, setPassage] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [numQuestions, setNumQuestions] = useState(5);
+  const [numQuestions, setNumQuestions] = useState(3);
   const [isLoading, setIsLoading] = useState(false);
   const [quiz, setQuiz] = useState<QuizData | null>(null);
 
@@ -39,10 +41,14 @@ export const QuizArena: React.FC<QuizArenaProps> = ({ gradeLevel, subject, onSav
   const [isSaved, setIsSaved] = useState(false);
 
   const handleGenerateQuiz = async (chosenTopic?: string) => {
-    const t = (chosenTopic || topic).trim();
+    const isPassage = sourceMode === 'passage';
+    const t = chosenTopic ? chosenTopic.trim() : (isPassage ? passage.trim() : topic.trim());
     if (!t || isLoading) return;
 
-    if (chosenTopic) setTopic(chosenTopic);
+    if (chosenTopic) {
+      setSourceMode('topic');
+      setTopic(chosenTopic);
+    }
     setIsLoading(true);
     setQuiz(null);
     setCurrentIndex(0);
@@ -56,7 +62,8 @@ export const QuizArena: React.FC<QuizArenaProps> = ({ gradeLevel, subject, onSav
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: t,
+          topic: isPassage ? undefined : t,
+          passage: isPassage ? t : undefined,
           gradeLevel,
           difficulty,
           numQuestions,
@@ -75,7 +82,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({ gradeLevel, subject, onSav
       setQuiz(data);
     } catch (err: any) {
       console.error('Quiz creation error:', err);
-      alert(`Could not generate quiz: ${err.message || 'Please retry with another topic'}`);
+      alert(`Could not generate quiz: ${err.message || 'Please retry with another topic or passage.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -178,18 +185,83 @@ export const QuizArena: React.FC<QuizArenaProps> = ({ gradeLevel, subject, onSav
       {/* Quiz Generator Setup Form */}
       {!quiz ? (
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5">
+          {/* Source Mode Toggle: From Topic or From Passage */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              What topic would you like to test?
-            </label>
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Photosynthesis, The Solar System, Calculus Derivatives, Python Data Structures..."
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-violet-600 focus:ring-2 focus:ring-violet-100 text-slate-800 text-sm font-medium transition-all"
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                Generate Questions From:
+              </label>
+              <span className="text-[11px] text-violet-700 font-semibold bg-violet-50 px-2 py-0.5 rounded-md">
+                3 MCQs • 4 Options Each
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSourceMode('topic')}
+                className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all ${
+                  sourceMode === 'topic'
+                    ? 'border-violet-600 bg-violet-50 text-violet-900 ring-1 ring-violet-600'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                }`}
+              >
+                🏷️ Test Any Topic
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceMode('passage')}
+                className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all ${
+                  sourceMode === 'passage'
+                    ? 'border-violet-600 bg-violet-50 text-violet-900 ring-1 ring-violet-600'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                }`}
+              >
+                📄 Test Given Passage
+              </button>
+            </div>
           </div>
+
+          {sourceMode === 'topic' ? (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                What topic would you like to test?
+              </label>
+              <input
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g., Photosynthesis, The Solar System, Calculus Derivatives, Python Data Structures..."
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-violet-600 focus:ring-2 focus:ring-violet-100 text-slate-800 text-sm font-medium transition-all"
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerateQuiz()}
+              />
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Paste Educational Passage or Notes:
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPassage(
+                      `Mitochondria are membrane-bound cell organelles that generate most of the chemical energy needed to power the cell's biochemical reactions. Chemical energy produced by the mitochondria is stored in a small molecule called adenosine triphosphate (ATP). Mitochondria contain their own small chromosomes, generally human mitochondrial DNA spans about 16,569 base pairs encoding 37 genes. They are thought to have originated from ancient endosymbiotic proteobacteria engulfed by ancestral eukaryotic cells.`
+                    )
+                  }
+                  className="text-[11px] text-violet-600 hover:underline font-semibold"
+                >
+                  Insert Sample Passage
+                </button>
+              </div>
+              <textarea
+                value={passage}
+                onChange={(e) => setPassage(e.target.value)}
+                rows={4}
+                placeholder="Paste any textbook excerpt, lecture transcript, or article paragraph here. EduGenie will construct 3 multiple-choice questions based directly on this text..."
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-violet-600 focus:ring-2 focus:ring-violet-100 text-slate-800 text-sm leading-relaxed transition-all resize-y"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Difficulty */}
@@ -239,30 +311,32 @@ export const QuizArena: React.FC<QuizArenaProps> = ({ gradeLevel, subject, onSav
             </div>
           </div>
 
-          {/* Quick topics */}
-          <div>
-            <span className="text-xs font-semibold text-slate-400 block mb-2">
-              Quick test topics in {subject}:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {['Fundamental Concepts', 'Key Terminology & Definitions', 'Problem Solving & Calculations', 'Real-world Applications'].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => handleGenerateQuiz(`${subject}: ${t}`)}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-violet-50/70 hover:bg-violet-100 text-violet-800 font-medium border border-violet-200/60 transition-all"
-                >
-                  {t}
-                </button>
-              ))}
+          {/* Quick topics (if topic mode) */}
+          {sourceMode === 'topic' && (
+            <div>
+              <span className="text-xs font-semibold text-slate-400 block mb-2">
+                Quick test topics in {subject}:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {['Fundamental Concepts', 'Key Terminology & Definitions', 'Problem Solving & Calculations', 'Real-world Applications'].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => handleGenerateQuiz(`${subject}: ${t}`)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-violet-50/70 hover:bg-violet-100 text-violet-800 font-medium border border-violet-200/60 transition-all"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="pt-2 flex justify-end">
             <button
               onClick={() => handleGenerateQuiz()}
-              disabled={!topic.trim() || isLoading}
+              disabled={(sourceMode === 'topic' ? !topic.trim() : !passage.trim()) || isLoading}
               className={`px-6 py-3 rounded-xl font-bold text-sm flex items-center space-x-2 transition-all ${
-                !topic.trim() || isLoading
+                (sourceMode === 'topic' ? !topic.trim() : !passage.trim()) || isLoading
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                   : 'bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-200'
               }`}
@@ -275,7 +349,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({ gradeLevel, subject, onSav
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Start Quiz</span>
+                  <span>{sourceMode === 'passage' ? 'Generate Quiz from Passage' : 'Start Quiz'}</span>
                 </>
               )}
             </button>

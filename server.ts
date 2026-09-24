@@ -27,16 +27,24 @@ const ai = new GoogleGenAI({
 // Helper for error formatting
 function handleApiError(res: Response, err: any, customMsg: string) {
   console.error(customMsg, err);
+  const errMsg = err?.message || JSON.stringify(err);
+  if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded')) {
+    res.status(429).json({
+      error: 'Rate limit or free-tier quota briefly reached. Please wait a few seconds and try again.',
+      details: customMsg,
+    });
+    return;
+  }
   const message = err?.message || 'An unexpected error occurred while communicating with Gemini.';
   res.status(500).json({ error: message, details: customMsg });
 }
 
-// Helper for reliable Gemini calls with automatic fallback on transient high-demand spikes (e.g. 503)
+// Helper for reliable Gemini calls with automatic fallback on transient high-demand spikes (503) or rate limits (429)
 async function callGemini(params: {
   contents: any;
   config?: any;
 }) {
-  const modelsToTry = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-2.5-pro'];
   let lastError: any = null;
 
   for (const model of modelsToTry) {
@@ -48,13 +56,15 @@ async function callGemini(params: {
     } catch (err: any) {
       lastError = err;
       const errMsg = err?.message || JSON.stringify(err);
-      console.warn(`Model ${model} call warning: ${errMsg}`);
-      // Retry next model if high-demand 503 or transient unavailable
+      console.warn(`Model ${model} call error: ${errMsg}`);
+      // Retry next model if high-demand 503, transient unavailable, or quota exhausted on this specific model
       if (
         errMsg.includes('503') ||
         errMsg.includes('UNAVAILABLE') ||
         errMsg.includes('high demand') ||
-        errMsg.includes('ResourceExhausted')
+        errMsg.includes('429') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('Quota exceeded')
       ) {
         continue;
       }
@@ -234,19 +244,42 @@ Ensure the summary is crisp, removes filler, retains essential technical keyword
   }
 });
 
-// 4. Interactive Quiz Generator with Structured JSON
+// 4. Interactive Quiz Generator with Structured JSON (from topic or passage)
 app.post('/api/quiz', async (req: Request, res: Response) => {
   try {
-    const { topic, gradeLevel = 'high_school', difficulty = 'medium', numQuestions = 5, subject = 'General' } = req.body;
+    const { topic, passage, gradeLevel = 'high_school', difficulty = 'medium', numQuestions = 3, subject = 'General' } = req.body;
 
-    if (!topic || typeof topic !== 'string') {
-      res.status(400).json({ error: 'Topic is required.' });
+    const sourceContent = (passage && typeof passage === 'string' && passage.trim().length > 0)
+      ? passage.trim()
+      : (topic && typeof topic === 'string' ? topic.trim() : '');
+
+    if (!sourceContent) {
+      res.status(400).json({ error: 'A passage or topic is required to generate the quiz.' });
       return;
     }
 
-    const count = Math.min(Math.max(Number(numQuestions) || 5, 3), 10);
+    const count = Math.min(Math.max(Number(numQuestions) || 3, 1), 10);
 
-    const prompt = `Create an interactive multiple-choice quiz on the topic "${topic}" in subject "${subject}".
+    const isPassageBased = Boolean(passage && passage.trim().length > 0);
+
+    const prompt = isPassageBased
+      ? `Generate exactly ${count} multiple-choice questions directly from the following given passage.
+Target grade level: ${gradeLevel}
+Difficulty: ${difficulty}
+Subject context: ${subject}
+
+GIVEN PASSAGE:
+"""
+${sourceContent}
+"""
+
+STRICT REQUIREMENTS:
+1. Generate exactly ${count} questions (default 3) based strictly on facts, deductions, and concepts from the passage.
+2. Provide exactly 4 distinct multiple-choice options per question.
+3. Indicate the zero-indexed correct option (0, 1, 2, or 3).
+4. Provide a helpful hint to nudge the learner without immediately revealing the answer.
+5. Provide a detailed explanation explaining why the correct choice is accurate and why the other options are incorrect.`
+      : `Create an interactive multiple-choice quiz on the topic "${sourceContent}" in subject "${subject}".
 Target grade level: ${gradeLevel}
 Difficulty: ${difficulty}
 Total questions: ${count}
@@ -271,7 +304,7 @@ Provide a clear explanation explaining why the correct answer is right and why o
             },
             topic: {
               type: Type.STRING,
-              description: 'The core topic being tested',
+              description: 'The core topic or passage summary being tested',
             },
             gradeLevel: {
               type: Type.STRING,
@@ -426,6 +459,107 @@ Learner Profile: ${audienceFocus}`;
     res.json(JSON.parse(raw));
   } catch (err: any) {
     handleApiError(res, err, 'Error simplifying concept');
+  }
+});
+
+// 6. Personalized Learning Path & Resource Recommendation Engine
+app.post('/api/roadmap', async (req: Request, res: Response) => {
+  try {
+    const { topic, gradeLevel = 'high_school', learnerProfile = 'General Learner', currentProficiency = 'Beginner', targetGoal = '' } = req.body;
+
+    if (!topic || typeof topic !== 'string') {
+      res.status(400).json({ error: 'Topic is required to create a learning path.' });
+      return;
+    }
+
+    const systemInstruction = `You are EduGenie's Curriculum & Pedagogical Roadmap Architect.
+Your task is to build a structured, actionable, and inspiring step-by-step Personalized Learning Path from Beginner to Advanced mastery for the requested topic.
+
+For each milestone (Beginner, Intermediate, Advanced):
+- Provide clear milestone titles and estimated durations (e.g., "Weeks 1-2" or "3-4 Hours").
+- List 3-4 core concepts mastered in this phase.
+- List 2-3 hands-on actionable projects/tasks the student should build or solve to solidify mastery.
+- List 2 clear learning objectives.
+
+Also curate 4 to 6 high-quality, practical recommended learning resources across different formats:
+- Videos (e.g. YouTube channels, landmark video series, lectures)
+- Articles & Documentation (interactive sites, seminal papers, or authoritative blogs)
+- Books (acclaimed textbooks or popular science/domain books)
+- Interactive Tools or Courses (sandboxes, interactive tutorials)
+
+Provide specific, realistic titles, difficulty levels, rich descriptions, and search queries or direct URLs.
+Return ONLY valid JSON strictly adhering to the schema.`;
+
+    const prompt = `Create a comprehensive personalized learning path for: "${topic}"
+Target Grade/Level: ${gradeLevel}
+Current Proficiency: ${currentProficiency}
+Learner Goal/Context: ${targetGoal || 'Complete mastery from beginner to advanced with recommended study resources'}`;
+
+    const response = await callGemini({
+      contents: prompt,
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            topic: { type: Type.STRING },
+            targetLevel: { type: Type.STRING },
+            learnerProfile: { type: Type.STRING },
+            overview: { type: Type.STRING, description: 'Motivational executive summary of the journey' },
+            prerequisites: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: 'Key foundation skills needed before starting',
+            },
+            milestones: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  stage: { type: Type.STRING, description: 'Beginner, Intermediate, or Advanced' },
+                  milestoneTitle: { type: Type.STRING },
+                  estimatedDuration: { type: Type.STRING },
+                  coreConcepts: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                  },
+                  actionableTasks: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                  },
+                  learningObjectives: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                  },
+                },
+                required: ['stage', 'milestoneTitle', 'estimatedDuration', 'coreConcepts', 'actionableTasks', 'learningObjectives'],
+              },
+            },
+            recommendedResources: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  type: { type: Type.STRING, description: 'video, article, book, interactive, or course' },
+                  description: { type: Type.STRING },
+                  searchQueryOrUrl: { type: Type.STRING },
+                  difficulty: { type: Type.STRING, description: 'Beginner, Intermediate, or Advanced' },
+                },
+                required: ['title', 'type', 'description', 'searchQueryOrUrl', 'difficulty'],
+              },
+            },
+          },
+          required: ['topic', 'targetLevel', 'learnerProfile', 'overview', 'prerequisites', 'milestones', 'recommendedResources'],
+        },
+      },
+    });
+
+    const rawJson = response.text?.trim() || '{}';
+    res.json(JSON.parse(rawJson));
+  } catch (err: any) {
+    handleApiError(res, err, 'Error generating personalized learning path');
   }
 });
 

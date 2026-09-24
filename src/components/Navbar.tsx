@@ -7,6 +7,7 @@ import {
   FileText,
   HelpCircle,
   Lightbulb,
+  Compass,
   Bookmark,
   ChevronDown,
 } from 'lucide-react';
@@ -53,10 +54,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const tabs = [
     { id: 'ask', label: 'Ask & Solve', icon: MessageSquare, badge: null },
-    { id: 'notes', label: 'Study Notes', icon: BookOpen, badge: 'Smart' },
-    { id: 'summarize', label: 'Summarizer', icon: FileText, badge: null },
-    { id: 'quiz', label: 'Quiz Arena', icon: HelpCircle, badge: 'Interactive' },
     { id: 'simplify', label: 'Concept Simplifier', icon: Lightbulb, badge: 'ELI5' },
+    { id: 'quiz', label: 'Quiz Arena', icon: HelpCircle, badge: 'Interactive' },
+    { id: 'summarize', label: 'Summarizer', icon: FileText, badge: null },
+    { id: 'roadmap', label: 'Learning Path', icon: Compass, badge: 'Roadmap' },
+    { id: 'notes', label: 'Study Notes', icon: BookOpen, badge: 'Smart' },
     { id: 'notebook', label: 'My Notebook', icon: Bookmark, badge: savedCount > 0 ? String(savedCount) : null },
   ];
 

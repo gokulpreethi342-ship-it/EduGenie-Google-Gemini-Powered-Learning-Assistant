@@ -6,6 +6,7 @@ import { StudyNotes } from './components/StudyNotes';
 import { MaterialSummarizer } from './components/MaterialSummarizer';
 import { QuizArena } from './components/QuizArena';
 import { ConceptSimplifier } from './components/ConceptSimplifier';
+import { LearningRoadmap } from './components/LearningRoadmap';
 import { SavedNotebook } from './components/SavedNotebook';
 import { getSavedItems } from './utils/storage';
 import { Sparkles, Heart } from 'lucide-react';
@@ -73,6 +74,14 @@ export default function App() {
 
         {activeTab === 'simplify' && (
           <ConceptSimplifier
+            gradeLevel={gradeLevel}
+            subject={subject}
+            onSavedChange={refreshSavedCount}
+          />
+        )}
+
+        {activeTab === 'roadmap' && (
+          <LearningRoadmap
             gradeLevel={gradeLevel}
             subject={subject}
             onSavedChange={refreshSavedCount}

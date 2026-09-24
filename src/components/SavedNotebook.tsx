@@ -11,6 +11,7 @@ import {
   HelpCircle,
   Lightbulb,
   Trophy,
+  Compass,
   Filter,
   ExternalLink,
 } from 'lucide-react';
@@ -68,7 +69,10 @@ export const SavedNotebook: React.FC<SavedNotebookProps> = ({ onSavedChange }) =
       item.title.toLowerCase().includes(search.toLowerCase()) ||
       item.content.toLowerCase().includes(search.toLowerCase()) ||
       item.subject.toLowerCase().includes(search.toLowerCase());
-    const matchesType = filterType === 'all' || item.type === filterType;
+    const matchesType =
+      filterType === 'all' ||
+      item.type === filterType ||
+      (filterType === 'roadmap' && item.type === 'learning_path');
     return matchesSearch && matchesType;
   });
 
@@ -84,6 +88,8 @@ export const SavedNotebook: React.FC<SavedNotebookProps> = ({ onSavedChange }) =
         return <Lightbulb className="w-4 h-4 text-amber-600" />;
       case 'quiz_score':
         return <Trophy className="w-4 h-4 text-purple-600" />;
+      case 'learning_path':
+        return <Compass className="w-4 h-4 text-violet-600" />;
       default:
         return <Bookmark className="w-4 h-4 text-slate-600" />;
     }
@@ -133,6 +139,7 @@ export const SavedNotebook: React.FC<SavedNotebookProps> = ({ onSavedChange }) =
         <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
           {[
             { id: 'all', label: 'All' },
+            { id: 'roadmap', label: 'Roadmaps' },
             { id: 'note', label: 'Notes' },
             { id: 'qa', label: 'Q&A' },
             { id: 'summary', label: 'Summaries' },

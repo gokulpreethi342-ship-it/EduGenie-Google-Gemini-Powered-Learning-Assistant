@@ -98,16 +98,22 @@ export const ConceptSimplifier: React.FC<ConceptSimplifierProps> = ({
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Banner */}
       <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-700 rounded-3xl p-6 sm:p-8 text-white shadow-md mb-6">
-        <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold text-amber-100 mb-3 border border-white/15">
-          <Lightbulb className="w-3.5 h-3.5 text-amber-200" />
-          <span>Intuition First • Mental Models</span>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-semibold text-amber-100 border border-white/15">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-200" />
+            <span>Intuition First • Mental Models</span>
+          </div>
+          <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-amber-950/30 backdrop-blur-xs text-[11px] font-semibold text-amber-200 border border-amber-300/20">
+            <Sparkles className="w-3 h-3 text-amber-300" />
+            <span>Fast Distillation Engine (LaMini / Flash)</span>
+          </div>
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-          Concept Simplifier (ELI5)
+          Concept Explanation & Simplifier
         </h1>
         <p className="text-amber-100 text-sm mt-1 max-w-xl">
           Tackle intimidating academic concepts through vivid real-world analogies, step-by-step
-          intuitive breakdowns, and practical mental models.
+          intuitive breakdowns, parallel mapping, and practical mental models.
         </p>
       </div>
 
