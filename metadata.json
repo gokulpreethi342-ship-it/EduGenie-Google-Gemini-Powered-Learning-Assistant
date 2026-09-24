@@ -1,0 +1,8 @@
+{
+  "name": "EduGenie - AI Learning Assistant",
+  "description": "An intuitive, AI-powered learning assistant powered by Google Gemini to help students master academic topics, generate study notes, solve problems step-by-step, summarize materials, and take interactive quizzes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
